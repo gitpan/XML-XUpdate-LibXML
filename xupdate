@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.16 2003/03/10 14:12:18 pajas Exp $
+# $Id: xupdate,v 1.17 2003/09/29 10:37:18 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -13,24 +13,27 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 
-use vars qw($VERSION $REVISION $keep_ws $strip_ws $print_version $help $usage $indent $extra_indent);
+use vars qw($VERSION $REVISION $keep_ws $strip_ws $print_version $help $usage $indent $extra_indent @prefixmap);
+
 
 use XML::LibXML;
 use XML::XUpdate::LibXML;
 use XML::Normalize::LibXML qw(xml_strip_element);
 
 BEGIN {
+  Getopt::Long::Configure ("bundling");
   GetOptions('-help|h' => \$help,
 	     '-version|V' => \$print_version,
 	     '-keep-ws|k' => \$keep_ws,
 	     '-strip-ws|s' => \$strip_ws,
 	     '-indent|i' => \$indent,
 	     '-extra-indent|j' => \$extra_indent,
+	     '-namespace|n=s' => \@prefixmap,
 	     '-usage|u' => \$usage,
 	     '-debug|D' => \$XML::XUpdate::LibXML::debug,
-	    );
+	    ) || die "Wrong command-line arguments\n";
   $VERSION='0.4';
-  $REVISION='$Revision: 1.16 $';
+  $REVISION='$Revision: 1.17 $';
 }
 
 if ($print_version) {
@@ -43,6 +46,13 @@ pod2usage() if ($usage or @ARGV<2);
 
 my $parser  = XML::LibXML->new();
 my $xupdate = XML::XUpdate::LibXML->new();
+
+foreach (@prefixmap) {
+  my ($prefix,$uri)= split /\s*=\s*/,$_;
+  if ($prefix ne '' and $uri ne '') {
+    $xupdate->registerNs($prefix,$uri);
+  }
+}
 
 if ($extra_indent||$strip_ws) {
   $parser->keep_blanks(0);
@@ -86,6 +96,12 @@ xupdate [options] <xupdate-file> <input-file>
  Options:
    -u | --usage        print brief help on usage
    -h | --help         print documentation
+
+   -n | --namespace prefix=namespace-uri
+                       associate a namespace with a prefix for use
+                       in XPath selections in XUpdate file
+                       (this option may occur several times)
+
    -k | --keep-ws      preserve whitespace in the XUpdate file
    -s | --strip-ws     strip ignorable whitespace from the input file
    -V | --version      print current version and revision
@@ -107,6 +123,15 @@ Print a brief help message on usage and exits.
 =item B<--help>
 
 Prints the manual page and exits.
+
+=item B<--namespace> prefix=namespace-uri
+
+Associate a namespace with a prefix. The prefix may be used in the
+XPath selections in the XUpdate file to address nodes of the source
+document that belong to the given namespace.  This is especially
+useful for mapping the default namespace to a prefix because XPath by
+definition doesn't honour default namespaces. This option may occur
+several times.
 
 =item B<--keep-ws>
 
@@ -151,3 +176,8 @@ described in XUpdate Working Draft from 2000-09-14
 (http://www.xmldb.org/xupdate/xupdate-wd.html).
 
 =cut
+
+=head1 AUTHOR
+
+Copyright 2002-2003 Petr Pajas, All rights reserved.
+

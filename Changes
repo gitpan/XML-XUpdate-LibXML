@@ -43,3 +43,21 @@ Revision history for Perl extension XML::XUpdate::LibXML.
 
         XML::Normalize::LibXML:
 	- now uses XML::LibXML::Iterator
+
+0.5.0 Mon Sep 29 12:45:18 2003 Petr Pajas <pajas@matfyz.cz>
+
+	XML::XUpdate::LibXML:
+        - using XML::LibXML::XPathContext as a XPath engine
+          (for better variable and NS support)
+        - xu:append/@child reimplemented
+        - xu:attribute bug fixed
+        - regiserNs added
+
+	xupdate:
+	- --namespace|-n added
+        - allow compact command-line flags
+        - die on command-line parsing errors
+
+        XML::Normalize::LibXML:
+	- fixed serious bug in xml_strip_element
+	

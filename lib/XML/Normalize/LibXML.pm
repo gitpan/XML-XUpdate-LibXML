@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.6 2003/03/10 14:12:39 pajas Exp $
+# $Id: LibXML.pm,v 1.7 2003/09/29 10:37:43 pajas Exp $
 
 package XML::Normalize::LibXML;
 
@@ -89,10 +89,10 @@ sub xml_strip_element {
   my $f = $node->firstChild;
   while ($f and $f->nodeType == XML::LibXML::XML_TEXT_NODE and
 	 $f->getData =~ /^\s/) {
-    my $data=$node->getData();
+    my $data=$f->getData();
     $data=~s/^\s+//;
     if ($data ne "") { 
-      $node->setData($data);
+      $f->setData($data);
       last;
     } else {
       $f->unbindNode();
@@ -103,10 +103,10 @@ sub xml_strip_element {
   my $f = $node->lastChild;
   while ($f and $f->nodeType == XML::LibXML::XML_TEXT_NODE and
 	 $f->getData =~ /\s$/) {
-    my $data=$node->getData();
+    my $data=$f->getData();
     $data=~s/\s+$//;
     if ($data ne "") {
-      $node->setData($data);
+      $f->setData($data);
       last;
     } else {
       $f->unbindNode();

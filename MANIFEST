@@ -5,3 +5,4 @@ lib/XML/Normalize/LibXML.pm
 lib/XML/XUpdate/LibXML.pm
 test.pl
 xupdate
+META.yml                                Module meta-data (added by MakeMaker)

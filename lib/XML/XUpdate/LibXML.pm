@@ -1,14 +1,15 @@
-# $Id: LibXML.pm,v 1.10 2003/03/10 14:06:16 pajas Exp $
+# $Id: LibXML.pm,v 1.12 2003/09/29 10:41:51 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
 use XML::LibXML;
+use XML::LibXML::XPathContext;
 use strict;
 use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.4.0';
+  $VERSION = '0.5.0';
 }
 
 sub strip_space {
@@ -20,7 +21,28 @@ sub strip_space {
 
 sub new {
   my $class=(ref($_[0]) || $_[0]);
-  return bless [{},"http://www.xmldb.org/xupdate"], $class;
+  my $var_pool = {};
+  my $xpc = XML::LibXML::XPathContext->new();
+  $xpc->registerVarLookupFunc(\&_get_var,$var_pool);
+  return bless [$var_pool,
+		"http://www.xmldb.org/xupdate",
+		$xpc
+	       ], $class;
+}
+
+sub registerNs {
+  my ($self,$prefix, $uri)=@_;
+  $self->[2]->registerNs($prefix,$uri);
+}
+
+sub init {
+  my ($self,$doc)=@_;
+  $self->[2]->setContextNode($doc);
+}
+
+sub _context {
+  my ($self,$name,$value)=@_;
+  return $self->[2];
 }
 
 sub _set_var {
@@ -30,8 +52,8 @@ sub _set_var {
 }
 
 sub _get_var {
-  my ($self,$name)=@_;
-  return $self->[0]->{$name};
+  my ($data,$name)=@_;
+  return $data->{$name};
 }
 
 sub set_namespace {
@@ -48,6 +70,7 @@ sub process {
   my ($self,$dom,$updoc)=@_;
   return unless ref($self);
 
+  $self->init($dom);
   print STDERR "Updating ",$dom->nodeName,"\n" if $debug;
   foreach my $command ($updoc->getDocumentElement()->childNodes()) {
 
@@ -126,18 +149,30 @@ sub insert_before {
 
 sub append_child {
   my ($self,$node,$results,$child)=@_;
+  return unless @$results;
   if ($child ne "") {
-    my @children=$node->childNodes();
-    $child=$node->findvalue($child) unless $child =~/^\s*\d+\s*$/;
-    my $after=$children[$child-1];
-    if ($child>1 and $after) {
-      $self->insert_after($after,$results);
-    } elsif (@children and $after) {
-      $self->insert_before($children[0],$results);
-    } else {
-      $self->append($node,$results);
+    # XUpdate WD is weird:
+      # child=1 should mean make the new node 1st child
+      # child=last() should mean make new node last child
+      # but if there are n children before insertion,
+      # last() evaluates to n but they want the new node
+      # to be (n+1)th.
+
+      # so we must add it first, then calculate the position:
+    my $ctxt = $self->_context();
+    $self->append($node,$results);
+    my ($ref)=$ctxt->findnodes("node()[$child]",$node);
+    return unless $ref;
+    # check whether we should move results before $ref node
+    foreach (@$results) {
+      return if $ref->isSameNode($_);
     }
-  } else {
+    # now move them
+    foreach (@$results) {
+      $_->unbindNode();
+      $node->insertBefore($_,$ref);
+    }
+ } else {
     $self->append($node,$results);
   }
 }
@@ -151,7 +186,7 @@ sub update {
     $node->unbindNode();
   } elsif ($node->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE ||
 	   $node->nodeType == XML::LibXML::XML_PI_NODE) {
-    $node->setValue(strip_space(join "", map { $_->toString() } @$results));
+    $node->setValue(strip_space(join "", map { $_->to_literal() } @$results));
   } elsif ($node->nodeType == XML::LibXML::XML_ELEMENT_NODE) {
     foreach ($node->childNodes()){
       $_->unbindNode();
@@ -174,7 +209,6 @@ sub process_instructions {
   my ($self, $dom, $command)=@_;
 
   my @result=();
-  
   foreach my $inst ($command->childNodes()) {
     print STDERR "instruction ",$command->toString(),"\n" if $debug;
     if ( $inst->nodeType == XML::LibXML::XML_ELEMENT_NODE ) {
@@ -194,20 +228,22 @@ sub process_instructions {
       } elsif ( $inst->getLocalName() eq 'attribute' ) {
 	if ($inst->hasAttribute('namespace') and
 	    $inst->getAttribute('name')=~/:/) {
-	  push @result,
+	  my $att=
 	    $dom->getOwnerDocument()->
 	      createAttributeNS(
 				$inst->getAttribute('namespace'),
-				$inst->getAttribute('name'),
-				$self->get_text($inst)
+				$inst->getAttribute('name')
 			       );
+	  $att->setValue($self->get_text($inst));
+	  push @result,$att;
 	} else {
-	  push @result,
+	  my $att=
 	    $dom->getOwnerDocument()->
 	      createAttribute(
-			      $inst->getAttribute('name'),
-			      $self->get_text($inst)
+			      $inst->getAttribute('name')
 			     );
+	  $att->setValue($self->get_text($inst));
+	  push @result,$att;
 	}
       } elsif (  $inst->getLocalName() eq 'text' ) {
 	push @result,$dom->getOwnerDocument()->createTextNode($self->get_text($inst));
@@ -245,11 +281,7 @@ sub get_select {
     die "Error: Required attribute select is missing or empty at:\n".
       $node->toString()."\nAborting!\n";
   }
-  if ($xpath =~ /^\$(.*)$/) {
-    return _get_var($self,$1);
-  } else {
-    return $dom->find($xpath);
-  }
+  return $self->_context->find($xpath);
 }
 
 sub xupdate_command {
@@ -361,6 +393,13 @@ several different DOM trees using several different XUpdate
 descriptions. The advantage of it is that an xupdate object remembers
 values all variables declared in XUpdate documents.
 
+=head2 C<$xupdate-E<gt>registerNs($prefix,$uri)>
+
+Tell the XPath engine to resolve given namespace prefix as
+the given namespace URI. This is particularly useful
+to bind a default namespace to a prefix because
+XPath doesn't honour default namespaces.
+
 =head2 C<$xupdate-E<gt>process($document_dom,$xupdate_dom)>
 
 This function takes two DOM trees as its arguments. It works by
@@ -403,12 +442,17 @@ XUpdate implementations.
 Commands are applied to all nodes of the select nodeset, not just the
 first one.
 
-=head1 BUGS/LIMITATIONS
+=head1 DIFFERENCES BETWEEN 0.4.x and 0.5.x
 
-XPath expression of the attribute child of append command is evaluated
-in the context of the appended node instead of the node-set of its
-children. So expressions like child="last()" or child="last()-3" do
-not work.
+XML::LibXML::XPathContext is used for variable code providing more
+flexible and powerfull implementation. New and hopefully correct
+implementation of the problematic child attribute of update command
+has been introduced.
+
+Support for registrering namespace prefix with the XPath engine
+(allows binding document's default namespace to a prefix).
+
+Several bug fixes.
 
 =head1 AUTHOR
 
@@ -417,6 +461,6 @@ Petr Pajas, pajas@matfyz.cz
 
 =head1 SEE ALSO
 
-L<XML::LibXML>
+L<XML::LibXML> L<XML::LibXML::XPathContext>
 
 =cut
