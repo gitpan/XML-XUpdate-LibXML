@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.5 2002/06/21 08:23:40 pajas Exp $
+# $Id: LibXML.pm,v 1.6 2002/06/24 14:39:41 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -8,7 +8,7 @@ use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.2.1';
+  $VERSION = '0.2.2';
 }
 
 sub strip_space {

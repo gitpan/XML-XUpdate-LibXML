@@ -5,3 +5,7 @@ Revision history for Perl extension XML::XUpdate::LibXML.
 		-Xn XML::XUpdate::LibXML
 0.02  Fri Mar 15 17:04:52 2002
         - fixed segmentation fault with LibXML 1.40
+0.2.1   
+        - XML::XUpdate::LibXML bugfix in 'update'
+0.2.2 Mon Jun 24 16:37:06 2002
+        - XML::Normalize::LibXML doc typo fixed

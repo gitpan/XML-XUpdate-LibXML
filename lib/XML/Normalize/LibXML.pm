@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.1 2002/03/06 10:55:50 pajas Exp $
+# $Id: LibXML.pm,v 1.2 2002/06/24 14:39:35 pajas Exp $
 
 package XML::Normalize::LibXML;
 
@@ -84,7 +84,7 @@ XML::Normalize::LibXML - simple whitespace striping functions
 
 =head1 SYNOPSIS
 
-use XML::LibXML::Normalize qw(trim xml_normalize xml_strip_whitespace);
+use XML::Normalize::LibXML qw(trim xml_normalize xml_strip_whitespace);
 
 $greeting=trim("   hallo world    ");  # returns "hallo world"
 xml_normalize($dom->getDocumentElement());
