@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.12 2002/10/29 10:51:08 pajas Exp $
+# $Id: xupdate,v 1.13 2002/11/07 09:46:00 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -28,7 +28,7 @@ BEGIN {
 	     '-usage|u' => \$usage,
 	    );
   $VERSION='0.3';
-  $REVISION='$Revision: 1.12 $';
+  $REVISION='$Revision: 1.13 $';
 }
 
 if ($print_version) {
@@ -85,7 +85,7 @@ xupdate [options] <xupdate-file> <input-file>
                        linebreak to every text node.
 
  but also put an extra newline after
-                       every start-tag and before every end-tag
+ every start-tag and before every end-tag
 
 =head1 OPTIONS
 

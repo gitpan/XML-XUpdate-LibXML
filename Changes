@@ -19,3 +19,13 @@ Revision history for Perl extension XML::XUpdate::LibXML.
       Sat Jul 13 16:25:00 2002 Petr Pajas <pajas@matfyz.cz>
         - XML::Normalize::LibXML xml_strip_whitespace now also removes
           empty text_nodes
+
+0.3.0 Thu Nov  7 10:52:19 2002  Petr Pajas <pajas@matfyz.cz>
+	- Different implementation of XUpdate variables is used. Now
+	  variables contain the actual objects resulting from an XPath query,
+	  and not their textual content as in versions 0.2.x of
+	  XML::XUpdate::LibXML.
+        - value-of instruction result in copies of the actual objects it
+          select rather than its textual content
+        - extra indentation option -j added
+        - indentation implies removable ws stripping XML parser

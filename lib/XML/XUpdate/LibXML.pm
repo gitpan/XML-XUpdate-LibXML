@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.7 2002/10/29 10:54:28 pajas Exp $
+# $Id: LibXML.pm,v 1.8 2002/10/29 18:28:19 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -8,7 +8,7 @@ use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.2.4';
+  $VERSION = '0.3.0';
 }
 
 sub strip_space {
@@ -25,6 +25,7 @@ sub new {
 
 sub _set_var {
   my ($self,$name,$value)=@_;
+  print STDERR "storing $name as ",ref($value),"\n" if $debug;
   $self->[0]->{$name}=$value;
 }
 
@@ -190,8 +191,12 @@ sub process_instructions {
 						       $self->get_text($inst)
 						      );
       } elsif ( $inst->getLocalName() eq 'value-of' ) {
-	my $value=$dom->getOwnerDocument()->findvalue($self->get_select($inst));
-	push @result,$dom->getOwnerDocument()->createTextNode($value);
+	my $value=$self->get_select($dom,$inst);
+	if ($value->isa('XML::LibXML::NodeList')) {
+	  push @result, map { $_->cloneNode(1) }$value->get_nodelist;
+	} else {
+	  push @result,$dom->getOwnerDocument()->createTextNode($value->to_literal());
+	}
       } else {
 	# not in XUpdate DTD but in examples of XUpdate WD
 	push @result,$dom->getOwnerDocument()->importNode($inst) 
@@ -206,27 +211,29 @@ sub process_instructions {
 }
 
 sub get_select {
-  my ($self,$node)=@_;
-  my $select=$node->getAttribute('select');
-  $select=~s{\$([A-Za-z0-9._\-:]+)}{_get_var($self,$1)}gesx; # TODO: complete NMTOKEN match
-  return $select;
+  my ($self,$dom,$node)=@_;
+  my $xpath=$node->getAttribute('select');
+  if ($xpath eq "") {
+    die "Error: Required attribute select is missing or empty at:\n".
+      $node->toString()."\nAborting!\n";
+  }
+  if ($xpath =~ /^\$(.*)$/) {
+    return _get_var($self,$1);
+  } else {
+    return $dom->find($xpath);
+  }
 }
 
 sub xupdate_command {
   my ($self,$dom,$command)=@_;
   my $child;
   return unless ($command->getType == XML::LibXML::XML_ELEMENT_NODE);
-  my $select=$self->get_select($command);
+  my $select=$self->get_select($dom,$command);
   if ($command->getLocalName() eq 'variable') {
-    if ($select ne "") {
-      $self->_set_var($command->getAttribute('name'),$select);
-    } else {
-      $self->_set_var($self->get_text($command));
-    }
+    $self->_set_var($command->getAttribute('name'), $select);
   } else {
-    if ($select ne "") {
-
-      my @refnodes=$dom->findnodes($select);
+    if ($select->isa('XML::LibXML::NodeList')) {
+      my @refnodes=$select->get_nodelist();
       if (@refnodes) {
 
 	# xu:insert-after
@@ -269,6 +276,8 @@ sub xupdate_command {
 
 	}
       }
+    } else {
+      die "XPath does not lead to a nodelist: ",$command->getAttribute('select'),"\n";
     }
   }
 }
@@ -331,6 +340,20 @@ The default namespace is "http://www.xmldb.org/xupdate".
 
 Returns XUpdate namespace URI used by XUpdate processor to identify
 XUpdate commands.
+
+=head1 DIFFERENCES BETWEEN 0.2.x and 0.3.x
+
+In 0.3.x different implementation of XUpdate variables is used. Now
+variables contain the actual objects resulting from an XPath query,
+and not their textual content as in versions 0.2.x of
+XML::XUpdate::LibXML.
+
+Also, value-of instruction result in copies of the actual objects it
+select rather than its textual content as in 0.2.x.
+
+I hope this implementation is more conformant with the (not very
+clear) XUpdate Working Draft and therefore more compatible with other
+XUpdate implementations.
 
 =head2 EXPORT
 
