@@ -1,0 +1,6 @@
+Revision history for Perl extension XML::XUpdate::LibXML.
+
+0.01  Wed Mar  6 10:04:47 2002
+	- original version; created by h2xs 1.20 with options
+		-Xn XML::XUpdate::LibXML
+

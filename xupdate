@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+
+# $Id: xupdate,v 1.10 2002/03/06 14:00:33 pajas Exp $
+
+use FindBin;
+use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
+         "$FindBin::Bin","$FindBin::Bin/../lib",
+	 "$FindBin::Bin/lib", "$FindBin::RealBin/lib",
+	 "$FindBin::Bin/../lib/site_perl"
+	);
+
+use strict;
+use Getopt::Long;
+use Pod::Usage;
+
+use vars qw($VERSION $REVISION $keep_ws $print_version $help $usage $indent);
+
+use XML::LibXML;
+use XML::XUpdate::LibXML;
+use XML::Normalize::LibXML qw(xml_strip_whitespace);
+
+BEGIN {
+  GetOptions('-help|h' => \$help,
+	     '-version|V' => \$print_version,
+	     '-keep-ws|k' => \$keep_ws,
+	     '-indent|i' => \$indent,
+	     '-usage|u' => \$usage,
+	    );
+  $VERSION='0.1';
+  $REVISION='$Revision: 1.10 $';
+}
+
+if ($print_version) {
+  print "Current version is $VERSION ($REVISION)\n";
+  print "Current version of XML::XUpdate::LibXML is $XML::XUpdate::LibXML::VERSION\n";
+  exit 1;
+}
+pod2usage(-exitstatus => 0, -verbose => 2) if $help;
+pod2usage() if ($usage or @ARGV<2);
+
+my $parser  = XML::LibXML->new();
+my $xupdate = XML::XUpdate::LibXML->new();
+
+my $dom     = $parser->parse_file($ARGV[1]);
+my $actions = $parser->parse_file($ARGV[0]);
+
+xml_strip_whitespace($actions) unless $keep_ws;
+$xupdate->process($dom->getDocumentElement(), $actions);
+print $dom->toString($indent ? 1 : 0);
+
+1;
+
+__END__
+
+
+=head1 xupdate
+
+xupdate - Process XUpdate commands over an XML document
+
+=head1 SYNOPSIS
+
+xupdate [options] <xupdate-file> <input-file>
+
+ Options:
+   -u | --usage       print brief help on usage
+   -h | --help        print documentation
+   -k | --keep-ws     preserve whitespace in XUpdate file
+   -V | --version     print current version and revision
+   -i | --indent      indent the output XML
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--usage>
+
+Print a brief help message on usage and exits.
+
+=item B<--help>
+
+Prints the manual page and exits.
+
+=item B<--keep-ws>
+
+Preserves whitespace in XUpdate file. The default behaviour is to
+strip any whitespace on the beginning or end of a text node in XUpdate
+file.
+
+=item B<--version>
+
+Print version and revision number of B<This program> command and
+version number of XML::XUpdate library used.
+
+=item B<--indent>
+
+Indent the resulting document on output.
+
+=back
+
+
+=head1 DESCRIPTION
+
+B<This program> will parse the given XUpdate file and the input file
+and print the input file updated accordingly. XUpdate file format is
+described in XUpdate Working Draft from 2000-09-14
+(http://www.xmldb.org/xupdate/xupdate-wd.html).
+
+=cut
