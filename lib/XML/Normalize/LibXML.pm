@@ -80,7 +80,7 @@ __END__
 
 =head1 NAME
 
-XML::LibXML::Normalize - simple whitespace striping functions
+XML::Normalize::LibXML - simple whitespace striping functions
 
 =head1 SYNOPSIS
 

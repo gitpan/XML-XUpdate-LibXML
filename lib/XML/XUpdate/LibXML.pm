@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.3 2002/03/15 16:01:39 pajas Exp $
+# $Id: LibXML.pm,v 1.5 2002/06/21 08:23:40 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -7,8 +7,8 @@ use strict;
 use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
-  $debug=1;
-  $VERSION = '0.2';
+  $debug=0;
+  $VERSION = '0.2.1';
 }
 
 sub strip_space {
@@ -129,7 +129,7 @@ sub update {
     foreach ($node->childNodes()){
       $_->unbindNode();
     }
-    $node->append($node,$results);
+    $self->append($node,$results);
   }
 }
 
