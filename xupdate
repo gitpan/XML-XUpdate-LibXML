@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.10 2002/03/06 14:00:33 pajas Exp $
+# $Id: xupdate,v 1.11 2002/03/15 16:01:39 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -26,8 +26,8 @@ BEGIN {
 	     '-indent|i' => \$indent,
 	     '-usage|u' => \$usage,
 	    );
-  $VERSION='0.1';
-  $REVISION='$Revision: 1.10 $';
+  $VERSION='0.2';
+  $REVISION='$Revision: 1.11 $';
 }
 
 if ($print_version) {

@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.1 2002/03/06 10:55:50 pajas Exp $
+# $Id: LibXML.pm,v 1.3 2002/03/15 16:01:39 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -7,8 +7,8 @@ use strict;
 use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
-  $debug=0;
-  $VERSION = '0.1';
+  $debug=1;
+  $VERSION = '0.2';
 }
 
 sub strip_space {
@@ -99,7 +99,6 @@ sub insert_before {
 
 sub append_child {
   my ($self,$node,$results,$child)=@_;
-
   if ($child ne "") {
     $child=$node->findvalue($child) unless $child =~/^\s*\D+\s*$/;
     my @children=$node->childNodes();
@@ -145,42 +144,62 @@ sub rename {
 }
 
 sub process_instructions {
-  my ($self,$doc, $command)=@_;
+  my ($self, $dom, $command)=@_;
+
   my @result=();
+  
   foreach my $inst ($command->childNodes()) {
     print STDERR "instruction ",$command->toString(),"\n" if $debug;
     if ( $inst->nodeType == XML_ELEMENT_NODE ) {
       if ( $inst->getLocalName() eq 'element' ) {
-	my $new=$doc->createElementNS(
-				      $inst->getAttribute('namespace'),
-				      $inst->getAttribute('name')
-				     );
-	$self->append($new,$self->process_instructions($doc,$inst));
+	my $new;
+	if ($inst->hasAttribute('namespace') and
+	    $inst->getAttribute('name')=~/:/) {
+	  $new=$dom->getOwnerDocument()->createElementNS(
+							 $inst->getAttribute('namespace'),
+							 $inst->getAttribute('name')
+							);
+	} else {
+	  $new=$dom->getOwnerDocument()->createElement($inst->getAttribute('name'));
+	}
+	$self->append($new,$self->process_instructions($dom,$inst));
 	push @result,$new;
       } elsif ( $inst->getLocalName() eq 'attribute' ) {
-	push @result,$doc->createAttributeNS(
-					     $inst->getAttribute('namespace'),
-					     $inst->getAttribute('name'),
-					     $self->get_text($inst)
-					    );
+	if ($inst->hasAttribute('namespace') and
+	    $inst->getAttribute('name')=~/:/) {
+	  push @result,
+	    $dom->getOwnerDocument()->
+	      createAttributeNS(
+				$inst->getAttribute('namespace'),
+				$inst->getAttribute('name'),
+				$self->get_text($inst)
+			       );
+	} else {
+	  push @result,
+	    $dom->getOwnerDocument()->
+	      createAttribute(
+			      $inst->getAttribute('name'),
+			      $self->get_text($inst)
+			     );
+	}
       } elsif (  $inst->getLocalName() eq 'text' ) {
-	push @result,$doc->createTextNode($self->get_text($inst));
+	push @result,$dom->getOwnerDocument()->createTextNode($self->get_text($inst));
       } elsif ( $inst->getLocalName() eq 'processing-instruction' ) {
-	push @result,$doc->createProcessingInstruction(
+	push @result,$dom->getOwnerDocument()->createProcessingInstruction(
 						       $inst->getAttribute('name'),
 						       $self->get_text($inst)
 						      );
       } elsif ( $inst->getLocalName() eq 'value-of' ) {
-	my $value=$doc->findvalue($self->get_select($inst))->to_literal();
-	push @result,$doc->createTextNode($value);
+	my $value=$dom->getOwnerDocument()->findvalue($self->get_select($inst))->to_literal();
+	push @result,$dom->getOwnerDocument()->createTextNode($value);
       } else {
 	# not in XUpdate DTD but in examples of XUpdate WD
-	push @result,$doc->importNode($inst) 
+	push @result,$dom->getOwnerDocument()->importNode($inst) 
 	  unless ($inst->getNamespaceURI eq $self->namespace());
       }
     } elsif ( $inst->nodeType == XML_CDATA_SECTION_NODE ||
 	      $inst->nodeType == XML_TEXT_NODE) {
-      push @result,$doc->importNode($inst);
+      push @result,$dom->getOwnerDocument()->importNode($inst);
     }
   }
   return \@result;
@@ -195,8 +214,7 @@ sub get_select {
 
 sub xupdate_command {
   my ($self,$dom,$command)=@_;
-  my $doc=$dom->getOwnerDocument();
-
+  my $child;
   return unless ($command->getType == XML_ELEMENT_NODE);
   my $select=$self->get_select($command);
   if ($command->getLocalName() eq 'variable') {
@@ -207,21 +225,22 @@ sub xupdate_command {
     }
   } else {
     if ($select ne "") {
+
       my @refnodes=$dom->findnodes($select);
       if (@refnodes) {
 	if ($command->getLocalName eq 'insert-after') {
-	  my $results=$self->process_instructions($doc,$command);
+	  my $results=$self->process_instructions($dom,$command);
 	  $self->insert_after($refnodes[0],$results);
 	} elsif ($command->getLocalName eq 'insert-before') {
-	  my $results=$self->process_instructions($doc,$command);
+	  my $results=$self->process_instructions($dom,$command);
 	  $self->insert_before($refnodes[0],$results);
-	  my $results=$self->process_instructions($doc,$command);
+	  my $results=$self->process_instructions($dom,$command);
 	} elsif ($command->getLocalName eq 'append') {
-	  my $results=$self->process_instructions($doc,$command);
-	  my $child=$command->getAttribute('child');
+	  my $results=$self->process_instructions($dom,$command);
+	  $child=$command->getAttribute('child');
 	  $self->append_child($refnodes[0],$results,$child);
 	} elsif ($command->getLocalName eq 'update') {
-	  my $results=$self->process_instructions($doc,$command);
+	  my $results=$self->process_instructions($dom,$command);
 	  # Well, XUpdate WD is not very specific about this.
           # The content of this element should be PCDATA only.
           # I'm extending WD by allowing instruction list.
