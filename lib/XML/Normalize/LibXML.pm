@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.2 2002/06/24 14:39:35 pajas Exp $
+# $Id: LibXML.pm,v 1.3 2002/07/13 14:26:52 pajas Exp $
 
 package XML::Normalize::LibXML;
 
@@ -45,7 +45,12 @@ sub xml_normalize {
 sub xml_strip_whitespace_text_node {
   my ($node)=@_;
   if ($node->nodeType() == XML_TEXT_NODE) {
-    $node->setData(trim($node->getData()));
+    my $data=trim($node->getData());
+    if ($data ne "") {
+      $node->setData($data);
+    } else {
+      $node->unbindNode();
+    }
   }
 }
 
@@ -63,8 +68,8 @@ sub xml_strip_whitespace {
   xml_normalize($dom);
   if ($strip_attributes) {
     $dom->iterator(sub {
-		     xml_strip_whitespace_text_node($_[0]);
 		     xml_strip_whitespace_attributes($_[0]);
+		     xml_strip_whitespace_text_node($_[0]);
 		   });
   } else {
     $dom->iterator(\&xml_strip_whitespace_text_node);

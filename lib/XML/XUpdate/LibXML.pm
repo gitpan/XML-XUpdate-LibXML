@@ -8,7 +8,7 @@ use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.2.2';
+  $VERSION = '0.2.3';
 }
 
 sub strip_space {
@@ -190,7 +190,7 @@ sub process_instructions {
 						       $self->get_text($inst)
 						      );
       } elsif ( $inst->getLocalName() eq 'value-of' ) {
-	my $value=$dom->getOwnerDocument()->findvalue($self->get_select($inst))->to_literal();
+	my $value=$dom->getOwnerDocument()->findvalue($self->get_select($inst));
 	push @result,$dom->getOwnerDocument()->createTextNode($value);
       } else {
 	# not in XUpdate DTD but in examples of XUpdate WD
@@ -208,7 +208,7 @@ sub process_instructions {
 sub get_select {
   my ($self,$node)=@_;
   my $select=$node->getAttribute('select');
-  $select=~s/\$([A-Za-z0-9._\-:]+)/_get_var($1)/e; # TODO: complete NMTOKEN match
+  $select=~s{\$([A-Za-z0-9._\-:]+)}{_get_var($1)}gesx; # TODO: complete NMTOKEN match
   return $select;
 }
 

@@ -1,11 +1,21 @@
 Revision history for Perl extension XML::XUpdate::LibXML.
 
-0.01  Wed Mar  6 10:04:47 2002
+0.01  Wed Mar  6 10:04:47 2002 Petr Pajas <pajas@matfyz.cz>
 	- original version; created by h2xs 1.20 with options
 		-Xn XML::XUpdate::LibXML
-0.02  Fri Mar 15 17:04:52 2002
+
+0.02  Fri Mar 15 17:04:52 2002 Petr Pajas <pajas@matfyz.cz>
         - fixed segmentation fault with LibXML 1.40
-0.2.1   
+0.2.1 Petr Pajas <pajas@matfyz.cz>
         - XML::XUpdate::LibXML bugfix in 'update'
-0.2.2 Mon Jun 24 16:37:06 2002
+
+0.2.2 Mon Jun 24 16:37:06 2002 Petr Pajas <pajas@matfyz.cz>
         - XML::Normalize::LibXML doc typo fixed
+
+0.2.3 Wed Jul 3 11:51:33 2002 thnx2 Steve McKay <steve@colgreen.com>
+        - bugfixes: allow multiple variable replacements in select
+        - fixed double literalization in xupdate:value-of handling
+
+      Sat Jul 13 16:25:00 2002 Petr Pajas <pajas@matfyz.cz>
+        - XML::Normalize::LibXML xml_strip_whitespace now also removes
+          empty text_nodes
