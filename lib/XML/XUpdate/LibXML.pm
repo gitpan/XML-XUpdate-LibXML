@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.8 2002/10/29 18:28:19 pajas Exp $
+# $Id: LibXML.pm,v 1.10 2003/03/10 14:06:16 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -8,7 +8,7 @@ use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.3.0';
+  $VERSION = '0.4.0';
 }
 
 sub strip_space {
@@ -48,8 +48,9 @@ sub process {
   my ($self,$dom,$updoc)=@_;
   return unless ref($self);
 
-  print STDERR "Updating $dom\n" if $debug;
+  print STDERR "Updating ",$dom->nodeName,"\n" if $debug;
   foreach my $command ($updoc->getDocumentElement()->childNodes()) {
+
     if ($command->nodeType == XML::LibXML::XML_ELEMENT_NODE) {
       if (lc($command->getNamespaceURI()) eq $self->namespace()) {
 	print STDERR "applying ",$command->toString(),"\n" if $debug;
@@ -58,6 +59,7 @@ sub process {
 	print STDERR "Ignorint element ",$command->toString(),"\n" if $debug;
       }
     }
+
   }
 }
 
@@ -73,11 +75,18 @@ sub get_text {
   return strip_space($text);
 }
 
+sub add_attribute {
+  my ($self, $node, $attr_node)=@_;
+  $node->setAttributeNS($attr_node->getNamespaceURI,
+			$attr_node->getName(),
+			$attr_node->getValue);
+}
+
 sub append {
   my ($self,$node,$results)=@_;
   foreach (@$results) {
     if ($_->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE) {
-      $node->setAttributeNS($_->getNamespaceURI,$_->getName(),$_->getValue);
+      $self->add_attribute($node,$_);
     } else {
       $node->appendChild($_);
     }
@@ -86,23 +95,40 @@ sub append {
 
 sub insert_after {
   my ($self,$node,$results)=@_;
-  foreach (reverse @$results) {
-    $node->parentNode()->insertAfter($_,$node);
+
+  if ($node->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE) {
+    $self->append($node->getOwnerElement(),$results);
+  } else {
+    foreach (reverse @$results) {
+      if ($_->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE) {
+	$self->add_attribute($node->parentNode(),$_);
+      } else {
+	$node->parentNode()->insertAfter($_,$node);
+      }
+    }
   }
 }
 
 sub insert_before {
   my ($self,$node,$results)=@_;
-  foreach (@$results) {
-    $node->parentNode()->insertBefore($_,$node);
+  if ($node->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE) {
+    $self->append($node->getOwnerElement(),$results);
+  } else {
+    foreach (@$results) {
+      if ($_->nodeType == XML::LibXML::XML_ATTRIBUTE_NODE) {
+	$self->add_attribute($node->parentNode(),$_);
+      } else {
+	$node->parentNode()->insertBefore($_,$node);
+      }
+    }
   }
 }
 
 sub append_child {
   my ($self,$node,$results,$child)=@_;
   if ($child ne "") {
-    $child=$node->findvalue($child) unless $child =~/^\s*\D+\s*$/;
     my @children=$node->childNodes();
+    $child=$node->findvalue($child) unless $child =~/^\s*\d+\s*$/;
     my $after=$children[$child-1];
     if ($child>1 and $after) {
       $self->insert_after($after,$results);
@@ -190,6 +216,8 @@ sub process_instructions {
 						       $inst->getAttribute('name'),
 						       $self->get_text($inst)
 						      );
+      } elsif ( $inst->getLocalName() eq 'comment' ) {
+	push @result,$dom->getOwnerDocument()->createComment($self->get_text($inst));
       } elsif ( $inst->getLocalName() eq 'value-of' ) {
 	my $value=$self->get_select($dom,$inst);
 	if ($value->isa('XML::LibXML::NodeList')) {
@@ -226,7 +254,6 @@ sub get_select {
 
 sub xupdate_command {
   my ($self,$dom,$command)=@_;
-  my $child;
   return unless ($command->getType == XML::LibXML::XML_ELEMENT_NODE);
   my $select=$self->get_select($dom,$command);
   if ($command->getLocalName() eq 'variable') {
@@ -239,40 +266,52 @@ sub xupdate_command {
 	# xu:insert-after
 	if ($command->getLocalName eq 'insert-after') {
 
-	  my $results=$self->process_instructions($dom,$command);
-	  $self->insert_after($refnodes[0],$results);
+	  foreach (@refnodes) {
+	    $self->insert_after($_,
+				$self->process_instructions($dom,$command));
+	  }
 
 	# xu:insert-before
 	} elsif ($command->getLocalName eq 'insert-before') {
 
-	  my $results=$self->process_instructions($dom,$command);
-	  $self->insert_before($refnodes[0],$results);
+	  foreach (@refnodes) {
+	    $self->insert_before($_,
+				$self->process_instructions($dom,$command));
+	  }
 
 	# xu:append
 	} elsif ($command->getLocalName eq 'append') {
 
-	  my $results=$self->process_instructions($dom,$command);
-	  $child=$command->getAttribute('child');
-	  $self->append_child($refnodes[0],$results,$child);
+	  foreach (@refnodes) {
+	    my $results=$self->process_instructions($dom,$command);
+	    my $child=$command->getAttribute('child');
+	    $self->append_child($_,$results,$child);
+	  }
 
 	# xu:update
 	} elsif ($command->getLocalName eq 'update') {
 
-	  my $results=$self->process_instructions($dom,$command);
-	  # Well, XUpdate WD is not very specific about this.
-          # The content of this element should be PCDATA only.
-          # I'm extending WD by allowing instruction list.
-	  $self->update($refnodes[0],$results);
+	  foreach (@refnodes) {
+	    my $results=$self->process_instructions($dom,$command);
+	    # Well, XUpdate WD is not very specific about this.
+	    # The content of this element should be PCDATA only.
+	    # I'm extending WD by allowing instruction list.
+	    $self->update($_,$results);
+	  }
 
 	# xu:remove
 	} elsif ($command->getLocalName eq 'remove') {
 
-	  $self->remove($refnodes[0]);
+	  foreach (@refnodes) {
+	    $self->remove($_);
+	  }
 
 	# xu:rename
 	} elsif ($command->getLocalName eq 'rename') {
 
-	  $self->rename($refnodes[0],$self->get_text($command));
+	  foreach (@refnodes) {
+	    $self->rename($_,$self->get_text($command));
+	  }
 
 	}
       }
@@ -341,6 +380,10 @@ The default namespace is "http://www.xmldb.org/xupdate".
 Returns XUpdate namespace URI used by XUpdate processor to identify
 XUpdate commands.
 
+=head2 EXPORT
+
+None.
+
 =head1 DIFFERENCES BETWEEN 0.2.x and 0.3.x
 
 In 0.3.x different implementation of XUpdate variables is used. Now
@@ -351,13 +394,21 @@ XML::XUpdate::LibXML.
 Also, value-of instruction result in copies of the actual objects it
 select rather than its textual content as in 0.2.x.
 
-I hope this implementation is more conformant with the (not very
+I hope the new implementation is more conformant with the (not very
 clear) XUpdate Working Draft and therefore more compatible with other
 XUpdate implementations.
 
-=head2 EXPORT
+=head1 DIFFERENCES BETWEEN 0.3.x and 0.4.x
 
-None.
+Commands are applied to all nodes of the select nodeset, not just the
+first one.
+
+=head1 BUGS/LIMITATIONS
+
+XPath expression of the attribute child of append command is evaluated
+in the context of the appended node instead of the node-set of its
+children. So expressions like child="last()" or child="last()-3" do
+not work.
 
 =head1 AUTHOR
 

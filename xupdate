@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.13 2002/11/07 09:46:00 pajas Exp $
+# $Id: xupdate,v 1.16 2003/03/10 14:12:18 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -13,22 +13,24 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 
-use vars qw($VERSION $REVISION $keep_ws $print_version $help $usage $indent $extra_indent);
+use vars qw($VERSION $REVISION $keep_ws $strip_ws $print_version $help $usage $indent $extra_indent);
 
 use XML::LibXML;
 use XML::XUpdate::LibXML;
-use XML::Normalize::LibXML qw(xml_strip_whitespace);
+use XML::Normalize::LibXML qw(xml_strip_element);
 
 BEGIN {
   GetOptions('-help|h' => \$help,
 	     '-version|V' => \$print_version,
 	     '-keep-ws|k' => \$keep_ws,
+	     '-strip-ws|s' => \$strip_ws,
 	     '-indent|i' => \$indent,
 	     '-extra-indent|j' => \$extra_indent,
 	     '-usage|u' => \$usage,
+	     '-debug|D' => \$XML::XUpdate::LibXML::debug,
 	    );
-  $VERSION='0.3';
-  $REVISION='$Revision: 1.13 $';
+  $VERSION='0.4';
+  $REVISION='$Revision: 1.16 $';
 }
 
 if ($print_version) {
@@ -42,12 +44,12 @@ pod2usage() if ($usage or @ARGV<2);
 my $parser  = XML::LibXML->new();
 my $xupdate = XML::XUpdate::LibXML->new();
 
-if ($indent||$extra_indent) {
+if ($extra_indent||$strip_ws) {
   $parser->keep_blanks(0);
 } else {
   $parser->keep_blanks(1);
 }
-my $dom     = $parser->parse_file($ARGV[1]);
+my $dom = $parser->parse_file($ARGV[1]);
 
 if ($keep_ws) {
   $parser->keep_blanks(1);
@@ -56,10 +58,16 @@ if ($keep_ws) {
 }
 my $actions = $parser->parse_file($ARGV[0]);
 
+unless ($keep_ws) {
+  my $command=$actions->getDocumentElement->firstChild;
+  while ($command) {
+    xml_strip_element($command);
+    $command = $command->nextSibling();
+  }
+}
 
-
-xml_strip_whitespace($actions) unless $keep_ws;
 $xupdate->process($dom->getDocumentElement(), $actions);
+
 print $dom->toString(0+($indent||$extra_indent)+$extra_indent);
 
 1;
@@ -78,7 +86,8 @@ xupdate [options] <xupdate-file> <input-file>
  Options:
    -u | --usage        print brief help on usage
    -h | --help         print documentation
-   -k | --keep-ws      preserve whitespace in XUpdate file
+   -k | --keep-ws      preserve whitespace in the XUpdate file
+   -s | --strip-ws     strip ignorable whitespace from the input file
    -V | --version      print current version and revision
    -i | --indent       indent the output XML
    -j | --extra-indent like -i, but also adds a leading and a trailing
@@ -101,9 +110,17 @@ Prints the manual page and exits.
 
 =item B<--keep-ws>
 
-Preserves whitespace in XUpdate file. The default behaviour is to
-strip any whitespace on the beginning or end of a text node in XUpdate
-file.
+Preserves any whitespace in XUpdate file. The default behaviour is to
+remove all ignorable whitespace and any leading or trailing whitespace
+in all XUpdate command elements in the XUpdate file.
+
+=item B<--strip-ws>
+
+Remove "ignorable" whitespace from the input file. The default
+behaviour is to keep any whitespace unless the --extra-indent (-j)
+option is used. Note that the whitespace being present or not may
+affect results returned by some XPath expressions (such as
+/foo/bar/text()[2]).
 
 =item B<--version>
 
@@ -118,6 +135,10 @@ Indent the resulting document on output.
 
 Indent the resulting document on output as --indent, but also add a
 leading and a trailing linebreak to every text node.
+
+=item B<--debug>
+
+Print some debugging information about commands being applied.
 
 =back
 

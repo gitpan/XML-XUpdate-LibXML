@@ -1,16 +1,18 @@
-# $Id: LibXML.pm,v 1.4 2002/10/29 10:52:11 pajas Exp $
+# $Id: LibXML.pm,v 1.6 2003/03/10 14:12:39 pajas Exp $
 
 package XML::Normalize::LibXML;
 
 use strict;
 use Exporter;
 use XML::LibXML;
+use XML::LibXML::Iterator;
+
 use vars qw(@ISA @EXPORT_OK $VERSION);
 
 BEGIN {
   @ISA = qw(Exporter);
-  @EXPORT_OK = qw(trim xml_normalize xml_strip_whitespace);
-  $VERSION='0.1'
+  @EXPORT_OK = qw(trim xml_normalize xml_strip_whitespace xml_strip_element);
+  $VERSION='0.2'
 }
 
 sub trim {
@@ -66,16 +68,52 @@ sub xml_strip_whitespace_attributes {
 sub xml_strip_whitespace {
   my ($dom, $strip_attributes)=@_;
   xml_normalize($dom);
+  my $iter= XML::LibXML::Iterator->new( $dom );
+
   if ($strip_attributes) {
-    $dom->iterator(sub {
-		     xml_strip_whitespace_attributes($_[0]);
-		     xml_strip_whitespace_text_node($_[0]);
+    $iter->iterate(sub {
+		     xml_strip_whitespace_attributes($_[1]);
+		     xml_strip_whitespace_text_node($_[1]);
 		   });
   } else {
-    $dom->iterator(\&xml_strip_whitespace_text_node);
+    $iter->iterate(sub {
+		     xml_strip_whitespace_text_node($_[1]);
+		   });
   }
 }
 
+sub xml_strip_element {
+  my ($node)=@_;
+  return unless $node->nodeType == XML::LibXML::XML_ELEMENT_NODE;
+
+  my $f = $node->firstChild;
+  while ($f and $f->nodeType == XML::LibXML::XML_TEXT_NODE and
+	 $f->getData =~ /^\s/) {
+    my $data=$node->getData();
+    $data=~s/^\s+//;
+    if ($data ne "") { 
+      $node->setData($data);
+      last;
+    } else {
+      $f->unbindNode();
+      $f = $node->firstChild;
+    }
+  }
+
+  my $f = $node->lastChild;
+  while ($f and $f->nodeType == XML::LibXML::XML_TEXT_NODE and
+	 $f->getData =~ /\s$/) {
+    my $data=$node->getData();
+    $data=~s/\s+$//;
+    if ($data ne "") {
+      $node->setData($data);
+      last;
+    } else {
+      $f->unbindNode();
+      $f = $node->lastChild;
+    }
+  }
+}
 
 1;
 
@@ -97,7 +135,7 @@ xml_strip_whitespace($dom->getDocumentElement());
 
 =head1 DESCRIPTION
 
-This module provides simple white-space striping and text-node
+This module provides simple whitespace striping and text-node
 normalizing functions.
 
 =head2 C<trim($string)>
@@ -122,6 +160,10 @@ Normalizes the subtree and trims whitespace from all Text nodes within
 the subtree. If the optional argument $include_attributes is defined
 and non-zero, this function trims whitespace also from all Attribute
 nodes.
+
+=head2 C<xml_strip_element($node)>
+
+Removes leading and trailing whitespace from a given element.
 
 =head1 AUTHOR
 
