@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.3 2002/07/13 14:26:52 pajas Exp $
+# $Id: LibXML.pm,v 1.4 2002/10/29 10:52:11 pajas Exp $
 
 package XML::Normalize::LibXML;
 
@@ -26,7 +26,7 @@ sub xml_normalize {
 
   foreach my $node ($node->childNodes()) {
     my $type = $node->nodeType;
-    if ($type == XML_TEXT_NODE) {
+    if ($type == XML::LibXML::XML_TEXT_NODE) {
       if ($prev) {
 	$prev->setData($prev->getData().$node->getData());
 	$node->unbindNode();
@@ -35,7 +35,7 @@ sub xml_normalize {
       }
     } else {
       $prev = undef;
-      if ($type == XML_ELEMENT_NODE) {
+      if ($type == XML::LibXML::XML_ELEMENT_NODE) {
 	xml_normalize($node);
       }
     }
@@ -44,7 +44,7 @@ sub xml_normalize {
 
 sub xml_strip_whitespace_text_node {
   my ($node)=@_;
-  if ($node->nodeType() == XML_TEXT_NODE) {
+  if ($node->nodeType() == XML::LibXML::XML_TEXT_NODE) {
     my $data=trim($node->getData());
     if ($data ne "") {
       $node->setData($data);
@@ -56,7 +56,7 @@ sub xml_strip_whitespace_text_node {
 
 sub xml_strip_whitespace_attributes {
   my ($node)=@_;
-  if ($node->nodeType() == XML_ELEMENT_NODE) {
+  if ($node->nodeType() == XML::LibXML::XML_ELEMENT_NODE) {
     foreach my $attr ($node->attributes()) {
       $node->setValue(trim($node->getValue()));
     }

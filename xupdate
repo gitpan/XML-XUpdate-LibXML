@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.11 2002/03/15 16:01:39 pajas Exp $
+# $Id: xupdate,v 1.12 2002/10/29 10:51:08 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -13,7 +13,7 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 
-use vars qw($VERSION $REVISION $keep_ws $print_version $help $usage $indent);
+use vars qw($VERSION $REVISION $keep_ws $print_version $help $usage $indent $extra_indent);
 
 use XML::LibXML;
 use XML::XUpdate::LibXML;
@@ -24,10 +24,11 @@ BEGIN {
 	     '-version|V' => \$print_version,
 	     '-keep-ws|k' => \$keep_ws,
 	     '-indent|i' => \$indent,
+	     '-extra-indent|j' => \$extra_indent,
 	     '-usage|u' => \$usage,
 	    );
-  $VERSION='0.2';
-  $REVISION='$Revision: 1.11 $';
+  $VERSION='0.3';
+  $REVISION='$Revision: 1.12 $';
 }
 
 if ($print_version) {
@@ -41,12 +42,25 @@ pod2usage() if ($usage or @ARGV<2);
 my $parser  = XML::LibXML->new();
 my $xupdate = XML::XUpdate::LibXML->new();
 
+if ($indent||$extra_indent) {
+  $parser->keep_blanks(0);
+} else {
+  $parser->keep_blanks(1);
+}
 my $dom     = $parser->parse_file($ARGV[1]);
+
+if ($keep_ws) {
+  $parser->keep_blanks(1);
+} else {
+  $parser->keep_blanks(0);
+}
 my $actions = $parser->parse_file($ARGV[0]);
+
+
 
 xml_strip_whitespace($actions) unless $keep_ws;
 $xupdate->process($dom->getDocumentElement(), $actions);
-print $dom->toString($indent ? 1 : 0);
+print $dom->toString(0+($indent||$extra_indent)+$extra_indent);
 
 1;
 
@@ -62,11 +76,16 @@ xupdate - Process XUpdate commands over an XML document
 xupdate [options] <xupdate-file> <input-file>
 
  Options:
-   -u | --usage       print brief help on usage
-   -h | --help        print documentation
-   -k | --keep-ws     preserve whitespace in XUpdate file
-   -V | --version     print current version and revision
-   -i | --indent      indent the output XML
+   -u | --usage        print brief help on usage
+   -h | --help         print documentation
+   -k | --keep-ws      preserve whitespace in XUpdate file
+   -V | --version      print current version and revision
+   -i | --indent       indent the output XML
+   -j | --extra-indent like -i, but also adds a leading and a trailing
+                       linebreak to every text node.
+
+ but also put an extra newline after
+                       every start-tag and before every end-tag
 
 =head1 OPTIONS
 
@@ -94,6 +113,11 @@ version number of XML::XUpdate library used.
 =item B<--indent>
 
 Indent the resulting document on output.
+
+=item B<--extra-indent>
+
+Indent the resulting document on output as --indent, but also add a
+leading and a trailing linebreak to every text node.
 
 =back
 
