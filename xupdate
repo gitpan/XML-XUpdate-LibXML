@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: xupdate,v 1.17 2003/09/29 10:37:18 pajas Exp $
+# $Id: xupdate,v 1.18 2003/12/03 12:01:54 pajas Exp $
 
 use FindBin;
 use lib ("$FindBin::RealBin", "$FindBin::RealBin/../lib",
@@ -33,7 +33,7 @@ BEGIN {
 	     '-debug|D' => \$XML::XUpdate::LibXML::debug,
 	    ) || die "Wrong command-line arguments\n";
   $VERSION='0.4';
-  $REVISION='$Revision: 1.17 $';
+  $REVISION='$Revision: 1.18 $';
 }
 
 if ($print_version) {
@@ -179,5 +179,11 @@ described in XUpdate Working Draft from 2000-09-14
 
 =head1 AUTHOR
 
+Petr Pajas, pajas@matfyz.cz
+
+=head1 COPYRIGHT
+
 Copyright 2002-2003 Petr Pajas, All rights reserved.
 
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.

@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.7 2003/09/29 10:37:43 pajas Exp $
+# $Id: LibXML.pm,v 1.8 2003/12/03 12:01:14 pajas Exp $
 
 package XML::Normalize::LibXML;
 
@@ -168,6 +168,13 @@ Removes leading and trailing whitespace from a given element.
 =head1 AUTHOR
 
 Petr Pajas, pajas@matfyz.cz
+
+=head1 COPYRIGHT
+
+Copyright 2002-2003 Petr Pajas, All rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 

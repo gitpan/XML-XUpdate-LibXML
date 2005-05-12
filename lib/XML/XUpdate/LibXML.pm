@@ -1,4 +1,4 @@
-# $Id: LibXML.pm,v 1.12 2003/09/29 10:41:51 pajas Exp $
+# $Id: LibXML.pm,v 1.15 2005/05/12 15:04:58 pajas Exp $
 
 package XML::XUpdate::LibXML;
 
@@ -9,7 +9,7 @@ use vars qw(@ISA $debug $VERSION);
 
 BEGIN {
   $debug=0;
-  $VERSION = '0.5.0';
+  $VERSION = '0.6.0';
 }
 
 sub strip_space {
@@ -47,7 +47,7 @@ sub _context {
 
 sub _set_var {
   my ($self,$name,$value)=@_;
-  print STDERR "storing $name as ",ref($value),"\n" if $debug;
+  print STDERR "DEBUG: Storing $name as ",ref($value),"\n" if $debug;
   $self->[0]->{$name}=$value;
 }
 
@@ -71,15 +71,15 @@ sub process {
   return unless ref($self);
 
   $self->init($dom);
-  print STDERR "Updating ",$dom->nodeName,"\n" if $debug;
+  print STDERR "DEBUG: Updating ",$dom->nodeName,"\n" if $debug;
   foreach my $command ($updoc->getDocumentElement()->childNodes()) {
 
     if ($command->nodeType == XML::LibXML::XML_ELEMENT_NODE) {
       if (lc($command->getNamespaceURI()) eq $self->namespace()) {
-	print STDERR "applying ",$command->toString(),"\n" if $debug;
+	print STDERR "DEBUG: applying ",$command->toString(),"\n" if $debug;
 	$self->xupdate_command($dom,$command);
       } else {
-	print STDERR "Ignorint element ",$command->toString(),"\n" if $debug;
+	print STDERR "DEBUG: Ignorint element ",$command->toString(),"\n" if $debug;
       }
     }
 
@@ -210,7 +210,7 @@ sub process_instructions {
 
   my @result=();
   foreach my $inst ($command->childNodes()) {
-    print STDERR "instruction ",$command->toString(),"\n" if $debug;
+    print STDERR "DEBUG: Instruction ",$command->toString(),"\n" if $debug;
     if ( $inst->nodeType == XML::LibXML::XML_ELEMENT_NODE ) {
       if ( $inst->getLocalName() eq 'element' ) {
 	my $new;
@@ -284,17 +284,46 @@ sub get_select {
   return $self->_context->find($xpath);
 }
 
+sub get_test {
+  my ($self,$dom,$node)=@_;
+  my $xpath=$node->getAttribute('test');
+  if ($xpath eq "") {
+    die "Error: Required attribute test is missing or empty at:\n".
+      $node->toString()."\nAborting!\n";
+  }
+  return $self->_context->find($xpath);
+}
+
 sub xupdate_command {
   my ($self,$dom,$command)=@_;
   return unless ($command->getType == XML::LibXML::XML_ELEMENT_NODE);
-  my $select=$self->get_select($dom,$command);
   if ($command->getLocalName() eq 'variable') {
+    my $select=$self->get_select($dom,$command);
     $self->_set_var($command->getAttribute('name'), $select);
+  } elsif ($command->getLocalName() eq 'if') {
+    # xu:if
+    my $test=$self->get_test($dom,$command);
+    if ($test) {
+      print STDERR "DEBUG: Conditional execution of ",$dom->nodeName,"\n" if $debug;
+      foreach my $subcommand ($command->childNodes()) {
+	
+	if ($subcommand->nodeType == XML::LibXML::XML_ELEMENT_NODE) {
+	  if (lc($subcommand->getNamespaceURI()) eq $self->namespace()) {
+	    print STDERR "DEBUG: Applying ",$subcommand->toString(),"\n" if $debug;
+	    $self->xupdate_command($dom,$subcommand);
+	  } else {
+	    print STDERR "DEBUG: Ignoring element ",$subcommand->toString(),"\n" if $debug;
+	  }
+	}
+	
+      }
+    }
   } else {
+    my $select=$self->get_select($dom,$command);
     if ($select->isa('XML::LibXML::NodeList')) {
       my @refnodes=$select->get_nodelist();
       if (@refnodes) {
-
+	
 	# xu:insert-after
 	if ($command->getLocalName eq 'insert-after') {
 
@@ -353,7 +382,6 @@ sub xupdate_command {
   }
 }
 
-
 1;
 
 __END__
@@ -373,7 +401,7 @@ $parser  = XML::LibXML->new();
 $dom     = $parser->parse_file("mydoc.xml");
 $actions = $parser->parse_file("update.xml");
 
-$xupdate = XML::LibXML::XUpdate->new();
+$xupdate = XML::XUpdate::LibXML->new();
 $xupdate->process($dom->getDocumentElement(), $actions);
 print $dom->toString(),"\n";
 
@@ -386,7 +414,7 @@ The implementation is based on XML::LibXML DOM API.
 
 =head2 C<new>
 
-    my $xupdate = XML::LibXML::XUpdate->new();
+    my $xupdate = XML::XUpdate::LibXML->new();
 
 Creates a new XUpdate object. You may use this object to update
 several different DOM trees using several different XUpdate
@@ -430,8 +458,8 @@ variables contain the actual objects resulting from an XPath query,
 and not their textual content as in versions 0.2.x of
 XML::XUpdate::LibXML.
 
-Also, value-of instruction result in copies of the actual objects it
-select rather than its textual content as in 0.2.x.
+Also, value-of instruction results in copies of the actual objects it
+selects rather than their textual content as in 0.2.x.
 
 I hope the new implementation is more conformant with the (not very
 clear) XUpdate Working Draft and therefore more compatible with other
@@ -454,10 +482,20 @@ Support for registrering namespace prefix with the XPath engine
 
 Several bug fixes.
 
+=head1 DIFFERENCES BETWEEN 0.5.x and 0.6.x
+
+xu:if command implementation contributed by Amir Guindehi.
+
 =head1 AUTHOR
 
-
 Petr Pajas, pajas@matfyz.cz
+
+=head1 COPYRIGHT
+
+Copyright 2002-2005 Petr Pajas, All rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
